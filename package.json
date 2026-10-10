@@ -1,0 +1,21 @@
+{
+  "name": "isl-sign-recognition",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node tests/pipeline.test.js",
+    "train:v2": "node scripts/train_model_v2.js",
+    "generate:dataset": "node scripts/generate_isl_dataset.js"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "^0.10.14"
+  },
+  "devDependencies": {
+    "pptxgenjs": "^4.0.1",
+    "vite": "^5.4.2"
+  }
+}

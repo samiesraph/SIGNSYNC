@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Sign Language (ISL) Recognition - Live Text Pipeline & Dataset Studio</title>
+    <link rel="stylesheet" href="./src/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <h1>🤟 Indian Sign Language (ISL) AI Recognition</h1>
+                <p class="subtitle">Real-Time 3D Landmark Model → Live Sentence Builder & Voice TTS</p>
+            </div>
+            <div class="header-right">
+                <!-- Mode Switcher Tabs -->
+                <div class="nav-tabs">
+                    <button id="tabLiveTranslator" class="tab-btn active">Live Translator</button>
+                    <button id="tabCollectorStudio" class="tab-btn">📹 Dataset Studio</button>
+                </div>
+
+                <!-- Model Version Selector -->
+                <div class="model-version-wrapper">
+                    <label for="modelVersionSelect" class="version-label">Model:</label>
+                    <select id="modelVersionSelect" class="model-select">
+                        <option value="v2" selected>Model v2 (30 ISL Classes)</option>
+                        <option value="v1">Model v1 (7 Baseline Classes)</option>
+                    </select>
+                </div>
+
+                <div id="statusBadge" class="status-badge status-processing">
+                    <span class="status-dot">🟡</span>
+                    <span id="statusText" class="status-text">Initializing AI Model...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- LIVE TRANSLATOR VIEW -->
+        <main id="liveTranslatorView" class="main-grid">
+            <!-- Left Column: Video & Controls -->
+            <section class="video-section card">
+                <div class="card-header">
+                    <h2>📷 Live Camera Feed</h2>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <span id="activeModelBadge" class="model-badge">v2.0</span>
+                        <span id="fpsCounter" class="fps-tag">0 FPS</span>
+                    </div>
+                </div>
+
+                <!-- Error Alert Box -->
+                <div id="errorAlert" class="error-alert hidden">
+                    <span class="error-icon">⚠️</span>
+                    <span id="errorMessage">Camera or Model Error</span>
+                </div>
+
+                <div class="video-wrapper">
+                    <video id="webcamVideo" playsinline muted autoplay></video>
+                    <canvas id="outputCanvas"></canvas>
+
+                    <!-- Stabilization Overlay Bar -->
+                    <div id="stabilizerProgressWrapper" class="stabilizer-progress-wrapper hidden">
+                        <div class="stabilizer-info">
+                            <span id="stabilizingLabel">Stabilizing HELLO...</span>
+                            <span id="stabilizingPercent">0%</span>
+                        </div>
+                        <div class="progress-track">
+                            <div id="stabilizerProgressBar" class="progress-bar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Current Sign & Confidence Display -->
+                <div class="current-sign-box">
+                    <div class="sign-meta">
+                        <span class="meta-title">Current Sign</span>
+                        <div id="currentSignLabel" class="sign-label">Waiting for gesture...</div>
+                    </div>
+                    <div class="confidence-container">
+                        <div class="confidence-header">
+                            <span>Confidence (Threshold &ge; 75%)</span>
+                            <span id="confidencePercentage">0%</span>
+                        </div>
+                        <!-- Visual Confidence Bar -->
+                        <div id="visualConfidenceBar" class="ascii-bar">░░░░░░░░░░ 0%</div>
+                        <div class="confidence-track">
+                            <div id="confidenceFill" class="confidence-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configurable Threshold Slider -->
+                <div class="config-panel">
+                    <div class="config-row">
+                        <label for="thresholdSlider" class="config-label">
+                            <span>Confidence Threshold: <strong id="thresholdVal">75%</strong></span>
+                        </label>
+                        <input type="range" id="thresholdSlider" min="0.50" max="0.95" step="0.05" value="0.75">
+                    </div>
+                    <div class="config-row" style="margin-top: 8px;">
+                        <label for="stabilizationSlider" class="config-label">
+                            <span>Stabilization Hold: <strong id="stabilizationVal">700 ms</strong></span>
+                        </label>
+                        <input type="range" id="stabilizationSlider" min="300" max="1500" step="50" value="700">
+                    </div>
+                </div>
+
+                <!-- ISL Sign Quick-Reference Guide -->
+                <div class="sign-guide-card">
+                    <details open>
+                        <summary>
+                            <span>📖 <strong>ISL Sign Reference Guide</strong> (How to perform the signs)</span>
+                            <span>▾</span>
+                        </summary>
+                        <div class="guide-content-grid">
+                            <div class="guide-category">
+                                <h4>👋 Greetings & Basics</h4>
+                                <ul>
+                                    <li><strong>HELLO / HI:</strong> Open palm facing camera, 5 fingers upright.</li>
+                                    <li><strong>STOP:</strong> Flat upright palm pushed forward.</li>
+                                    <li><strong>WAIT:</strong> Open relaxed palm facing upward.</li>
+                                    <li><strong>PLEASE / THANK YOU:</strong> Flat palm at chest or moving forward.</li>
+                                    <li><strong>SORRY:</strong> Closed fist at chest.</li>
+                                </ul>
+                            </div>
+                            <div class="guide-category">
+                                <h4>✅ Responses</h4>
+                                <ul>
+                                    <li><strong>YES / GOOD:</strong> 👍 Thumbs Up (fist with thumb upright).</li>
+                                    <li><strong>NO:</strong> 🤏 Pinch Index & Thumb, other 3 fingers curled.</li>
+                                    <li><strong>OK:</strong> 👌 Pinch Index & Thumb into 'O', other 3 fingers extended up.</li>
+                                    <li><strong>BAD:</strong> 🤙 Pinky extended alone pointing down/out, other fingers curled.</li>
+                                </ul>
+                            </div>
+                            <div class="guide-category">
+                                <h4>💧 Daily Essentials</h4>
+                                <ul>
+                                    <li><strong>WATER:</strong> 🖖 'W' Shape — 3 fingers (Index, Middle, Ring) extended upright, thumb on pinky.</li>
+                                    <li><strong>FOOD / EAT:</strong> 🤌 All 5 fingertips pinched together.</li>
+                                    <li><strong>DRINK:</strong> 🥛 Curved 'C' shape hand like holding a glass.</li>
+                                    <li><strong>HELP:</strong> 🫱 Flat horizontal palm.</li>
+                                    <li><strong>PHONE:</strong> 🤙 'Y' Shape — Thumb & Pinky extended like a receiver.</li>
+                                    <li><strong>HOME:</strong> 🏠 Fingers angled together forming a tent roof.</li>
+                                </ul>
+                            </div>
+                            <div class="guide-category">
+                                <h4>❓ Pronouns & Questions</h4>
+                                <ul>
+                                    <li><strong>YOU:</strong> 👆 Index finger pointing straight forward at camera.</li>
+                                    <li><strong>I / ME:</strong> Index finger pointing inward toward chest.</li>
+                                    <li><strong>HOW:</strong> ✌️ 'V' Shape — Index & Middle extended spread apart.</li>
+                                    <li><strong>ARE:</strong> 🤘 Horns — Index & Pinky extended, middle 2 curled.</li>
+                                    <li><strong>LOVE:</strong> 🤟 'ILY' — Thumb, Index, & Pinky extended, middle 2 curled.</li>
+                                    <li><strong>TIME:</strong> ⌚ Index pointing to wrist (watch location).</li>
+                                    <li><strong>SPACE:</strong> 🫲 Flat horizontal hand gesture.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+            </section>
+
+
+            <!-- Right Column: Sentence Builder, Controls & History -->
+            <section class="output-section">
+                <!-- Recognized Text Section -->
+                <div class="recognized-text-card card">
+                    <div class="card-header">
+                        <h2>💬 Recognized Text</h2>
+                        <span class="word-count-badge"><span id="wordCount">0</span> words</span>
+                    </div>
+                    <div class="text-box-container">
+                        <div id="recognizedTextBox" class="recognized-text-box placeholder">
+                            Recognized signs will accumulate into a sentence here...
+                        </div>
+                    </div>
+
+                    <!-- Action Controls -->
+                    <div class="controls-grid">
+                        <button id="btnPause" class="btn btn-warning">
+                            <span class="btn-icon">⏸️</span>
+                            <span id="pauseBtnText">Pause Recognition</span>
+                        </button>
+                        <button id="btnBackspace" class="btn btn-secondary">
+                            <span class="btn-icon">⌫</span> Backspace
+                        </button>
+                        <button id="btnClear" class="btn btn-danger">
+                            <span class="btn-icon">🗑️</span> Clear Text
+                        </button>
+                        <button id="btnSpeak" class="btn btn-primary">
+                            <span class="btn-icon">🔊</span> Speak
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Recognition History Panel -->
+                <div class="history-card card">
+                    <div class="card-header">
+                        <h2>📜 Recognition History</h2>
+                        <button id="btnClearHistory" class="btn-text">Clear History</button>
+                    </div>
+                    <div class="history-table-container">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Recognized Sign</th>
+                                    <th>Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTableBody">
+                                <tr class="empty-row">
+                                    <td colspan="3">No accepted predictions yet</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- DATASET COLLECTOR STUDIO VIEW -->
+        <main id="datasetCollectorView" class="card hidden">
+            <div class="card-header">
+                <div>
+                    <h2>📹 Real ISL Dataset Collector Studio</h2>
+                    <p class="subtitle" style="margin-top: 2px;">Record genuine MediaPipe 3D landmark samples directly from your webcam to expand model vocabulary.</p>
+                </div>
+                <button id="btnBackToTranslator" class="btn btn-secondary btn-sm">◀ Back to Translator</button>
+            </div>
+
+            <div class="collector-grid">
+                <!-- Left: Collector Controls & Counter -->
+                <div class="collector-controls-card">
+                    <div class="form-group">
+                        <label for="collectorClassSelect" class="form-label">Select Target Sign Class:</label>
+                        <select id="collectorClassSelect" class="form-select">
+                            <!-- Populated dynamically via JS -->
+                        </select>
+                    </div>
+
+                    <!-- Live Sample Counter Display (Step 5 Requirement) -->
+                    <div class="collector-counter-box">
+                        <div class="counter-label">Current class:</div>
+                        <div id="collectorCurrentClass" class="counter-class-name">WATER</div>
+                        <div class="counter-count-row">
+                            <span>Samples collected:</span>
+                            <strong id="collectorSampleCountText" class="counter-numbers">0 / 100</strong>
+                        </div>
+                        <div class="collector-progress-track">
+                            <div id="collectorProgressBar" class="collector-progress-fill" style="width: 0%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Recording Action Buttons -->
+                    <div class="collector-btn-grid">
+                        <button id="btnToggleRecord" class="btn btn-primary btn-large">
+                            <span id="recordBtnIcon">⏺️</span>
+                            <span id="recordBtnText">Start Recording</span>
+                        </button>
+                        <button id="btnExportDataset" class="btn btn-secondary">
+                            <span>📥</span> Export Samples (JSON)
+                        </button>
+                        <button id="btnClearSamples" class="btn btn-danger">
+                            <span>🗑️</span> Clear Samples
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right: Guidelines & Protocol -->
+                <div class="collector-info-card">
+                    <h3>📋 Real ISL Collection Protocol</h3>
+                    <ul class="protocol-list">
+                        <li><strong>1. Select Sign:</strong> Choose the target word from the 30 standardized ISL vocabulary classes.</li>
+                        <li><strong>2. Align Hand:</strong> Position hand 50–70 cm from the camera ensuring all 21 joint landmarks are tracked.</li>
+                        <li><strong>3. Pose Naturally:</strong> Perform the authentic ISLRTC sign. Vary your hand angle slightly during capture to build model robustness.</li>
+                        <li><strong>4. Genuine Samples:</strong> Each captured sample contains genuine 3D coordinates. No synthetic or duplicated frames are saved.</li>
+                        <li><strong>5. Export & Train:</strong> Export the recorded samples into <code>dataset/&lt;WORD&gt;/</code> and retrain with <code>npm run train:v2</code>.</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="./src/main.js"></script>
+</body>
+</html>
